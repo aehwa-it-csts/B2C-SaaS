@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>손말배움 데모</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* 레이아웃: 상단 바 + 탭, 각 화면은 '목록 | 시범·카메라 무대' 2단, 좁으면 1단 */
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --surface-2:#E6ECE8; --ink:#14201B; --ink-soft:#56655F; --line:#D3DDD8;
+  --accent:#0A775F; --accent-ink:#FFFFFF; --accent-soft:#D6EDE6;
+  --mine:#D2652A; --good:#1E8A4C; --warn:#B7791F; --bad:#C2413A;
+  --stage:#0E1613; --stage-ink:#DCE7E2;
+  --sk-hand:#3FD3AE; --sk-joint:#E9FFF8; --sk-face:rgba(220,235,228,.5); --sk-mine:#FF9A57;
+  --font-head:"IBM Plex Sans KR","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+  --font-body:"Noto Sans KR","Malgun Gothic",system-ui,-apple-system,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1513; --surface:#172019; --surface-2:#1F2A25; --ink:#E4ECE8; --ink-soft:#9AABA4; --line:#2C3933;
+  --accent:#3FC4A4; --accent-ink:#06231B; --accent-soft:#183A31;
+  --mine:#F29A5A; --good:#52C47F; --warn:#E0B050; --bad:#EE7A70; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0F1513; --surface:#172019; --surface-2:#1F2A25; --ink:#E4ECE8; --ink-soft:#9AABA4; --line:#2C3933;
+  --accent:#3FC4A4; --accent-ink:#06231B; --accent-soft:#183A31;
+  --mine:#F29A5A; --good:#52C47F; --warn:#E0B050; --bad:#EE7A70; color-scheme:dark; }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.6 var(--font-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 40px}
+h1,h2,h3{font-family:var(--font-head);text-wrap:balance;margin:0;line-height:1.25}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto}
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:18px 12px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:22px;font-weight:700;letter-spacing:-.01em}
+.brand span{color:var(--ink-soft);font-size:13px}
+.stats{display:flex;gap:18px;margin-left:auto;font-size:13px;color:var(--ink-soft);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.stats b{color:var(--ink);font-size:15px;margin-left:4px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:500;background:var(--surface-2);color:var(--ink-soft);white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.ok{color:var(--good)} .pill.err{color:var(--bad)} .pill.loading{color:var(--warn)}
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow-x:auto;margin-bottom:18px}
+nav.tabs button{border:0;background:none;padding:10px 14px;font-weight:500;color:var(--ink-soft);border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.view[hidden]{display:none!important}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;font-weight:500}
+.btn:hover{border-color:var(--ink-soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--bad)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.eyebrow{font-size:12px;letter-spacing:.06em;color:var(--ink-soft);margin:0 0 2px;font-weight:500}
+.muted{color:var(--ink-soft)}
+label.inline{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+select,input[type=text],textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+textarea{width:100%;min-height:84px;resize:vertical}
+
+/* 학습 */
+.learn{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px}
+.wordlist{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:8px;align-self:start;max-height:calc(100vh - 160px);overflow:auto}
+.wordlist h3{font-size:12px;letter-spacing:.06em;color:var(--ink-soft);font-weight:600;padding:10px 8px 4px}
+.wordlist button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;border:0;background:none;padding:7px 8px;border-radius:7px;text-align:left}
+.wordlist button:hover{background:var(--surface-2)}
+.wordlist button[aria-current="true"]{background:var(--accent-soft);font-weight:700}
+.wordlist .num{font-size:11.5px;color:var(--ink-soft);font-variant-numeric:tabular-nums;width:20px}
+.wordlist .w{flex:1}
+.dot{font-size:11px;padding:1px 7px;border-radius:99px;background:var(--surface-2);color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.dot.reg{background:var(--accent-soft);color:var(--accent)}
+.detail{min-width:0;display:flex;flex-direction:column;gap:14px}
+.detail-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.detail-head h2{font-size:30px;font-weight:700}
+.stages{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pane{margin:0;position:relative;background:var(--stage);border-radius:var(--r);overflow:hidden;aspect-ratio:4/3;max-width:100%}
+.pane>figcaption{position:absolute;top:8px;left:10px;z-index:3;font-size:12px;font-weight:600;color:var(--stage-ink);background:rgba(0,0,0,.45);padding:2px 9px;border-radius:99px}
+.pane>canvas{position:absolute;inset:0;width:100%;height:100%}
+.pane-empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--stage-ink);padding:20px;font-size:14px;z-index:2}
+.pane-empty .btn{background:transparent;color:var(--stage-ink);border-color:rgba(220,231,226,.35)}
+.slot{position:absolute;inset:0}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
+.controls .spacer{flex:1}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.result{display:grid;grid-template-columns:140px minmax(0,1fr) minmax(0,1.2fr);gap:20px;align-items:center}
+.score{text-align:center}
+.score .big{font-family:var(--font-head);font-size:52px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.score .lab{font-size:13px;color:var(--ink-soft);margin-top:6px}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:56px 1fr 34px;align-items:center;gap:8px;font-size:13px}
+.bar .track{height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+.bar .fill{height:100%;background:var(--accent);border-radius:99px;transition:width .5s}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-soft)}
+.tips{margin:0;padding-left:18px;display:grid;gap:6px}
+.tips li::marker{color:var(--mine)}
+.info{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 20px;align-items:start}
+.info p{margin:0}
+a{color:var(--accent)}
+
+/* 카메라 무대 */
+#camStage{position:absolute;inset:0;background:var(--stage)}
+#camStage video,#camStage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scaleX(-1)}
+#camStage .off{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--stage-ink);text-align:center;padding:20px;font-size:14px}
+#camStage.on .off{display:none}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;pointer-events:none;z-index:4;text-shadow:0 2px 12px rgba(0,0,0,.6)}
+.overlay .n{font-family:var(--font-head);font-size:96px;font-weight:700;line-height:1}
+.overlay .t{font-size:16px;font-weight:600;margin-top:6px}
+.overlay .rec{position:absolute;top:10px;right:12px;display:flex;align-items:center;gap:6px;background:rgba(194,65,58,.9);padding:3px 10px;border-radius:99px;font-size:12.5px;font-weight:700;text-shadow:none}
+.overlay .rec::before{content:"";width:8px;height:8px;border-radius:50%;background:#fff}
+.progress{position:absolute;left:0;bottom:0;height:5px;background:var(--mine);width:0;z-index:4}
+.filewrap{position:absolute;inset:0;z-index:6;background:var(--stage)}
+.filewrap video,.filewrap canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.filewrap .tag{position:absolute;top:8px;right:10px;z-index:2;font-size:12px;font-weight:600;color:#fff;background:rgba(210,101,42,.9);padding:2px 9px;border-radius:99px}
+
+/* 자막 */
+.caption{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px}
+.cap-stage{display:flex;flex-direction:column;gap:0}
+.cap-stage .pane{border-radius:var(--r) var(--r) 0 0}
+.capbar{background:#000;color:#fff;border-radius:0 0 var(--r) var(--r);padding:14px 18px;min-height:64px;font-size:24px;font-weight:700;font-family:var(--font-head);display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px}
+.capbar .ph{font-size:15px;font-weight:400;color:#9aa;font-family:var(--font-body)}
+.capbar .wd{animation:pop .35s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.loglist{list-style:none;margin:0;padding:0;display:grid;gap:6px;max-height:300px;overflow:auto;font-variant-numeric:tabular-nums}
+.loglist li{display:flex;justify-content:space-between;gap:10px;padding:7px 10px;background:var(--surface-2);border-radius:7px;font-size:14px}
+
+/* 퀴즈 */
+.quiz{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:start}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.choices button{padding:18px 10px;font-size:18px;font-weight:700;font-family:var(--font-head);border:1px solid var(--line);background:var(--surface);border-radius:var(--r)}
+.choices button:hover:not(:disabled){border-color:var(--accent)}
+.choices button.right{background:var(--good);border-color:var(--good);color:#fff}
+.choices button.wrong{background:var(--bad);border-color:var(--bad);color:#fff}
+
+/* 시범 등록 */
+.teach{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px}
+.samples{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);border-radius:99px;padding:3px 4px 3px 10px;font-size:13px}
+.chip button{border:0;background:var(--surface);border-radius:99px;width:22px;height:22px;line-height:1;padding:0}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stack{display:grid;gap:12px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;z-index:50;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.notice{font-size:13px;color:var(--ink-soft);background:var(--surface-2);border-radius:8px;padding:10px 12px}
+
+@media (max-width:860px){
+  .learn,.teach,.caption,.quiz{grid-template-columns:1fr}
+  .wordlist{max-height:240px}
+  .result{grid-template-columns:1fr}
+}
+@media (max-width:560px){ .stages{grid-template-columns:1fr} .detail-head h2{font-size:24px} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>손말배움</h1><span>수어 교육 웹앱 데모 · 인사 표현 2개</span></div>
+    <span class="pill loading" id="modelStatus">AI 모델 불러오는 중…</span>
+    <div class="stats">
+      <span>시범 등록<b id="stReg">0/2</b></span>
+      <span>연습한 표현<b id="stPracticed">0</b></span>
+      <span>평균 최고 점수<b id="stAvg">-</b></span>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-view="learn" aria-selected="true">학습 · 따라 하기</button>
+    <button role="tab" data-view="quiz" aria-selected="false">퀴즈</button>
+    <button role="tab" data-view="caption" aria-selected="false">수어 → 자막 체험</button>
+    <button role="tab" data-view="teach" aria-selected="false">시범 등록 (팀용)</button>
+  </nav>
+
+  <!-- 학습 -->
+  <section class="view learn" id="view-learn">
+    <aside class="wordlist" id="wordList" aria-label="표현 목록"></aside>
+    <div class="detail">
+      <div class="detail-head">
+        <div><p class="eyebrow" id="dCat">인사</p><h2 id="dTitle">안녕하세요</h2></div>
+        <span class="pill" id="dState">시범 없음</span>
+      </div>
+      <div class="stages">
+        <figure class="pane"><figcaption>시범</figcaption><canvas id="refCanvas"></canvas>
+          <div class="pane-empty" id="refEmpty"><div>아직 이 표현의 시범 동작이 없어요.<br>팀원이 '시범 등록' 탭에서 먼저 녹화해 주세요.</div><button class="btn" id="goTeach">시범 등록하러 가기</button></div>
+        </figure>
+        <figure class="pane"><figcaption>나</figcaption><div class="slot" id="slot-learn"></div></figure>
+      </div>
+      <div class="controls">
+        <button class="btn" id="btnPlay">시범 다시 보기</button>
+        <label class="inline">속도 <select id="selSpeed"><option value="0.5">0.5배</option><option value="0.75">0.75배</option><option value="1" selected>1배</option></select></label>
+        <label class="inline"><input type="checkbox" id="chkMirror" checked> 거울 모드</label>
+        <span class="spacer"></span>
+        <button class="btn primary" id="btnTry">따라 하기 (3초 뒤 녹화)</button>
+      </div>
+      <div class="card result" id="result" hidden>
+        <div class="score"><div class="big" id="rScore">0</div><div class="lab" id="rLabel">점</div></div>
+        <div class="bars" id="rBars"></div>
+        <div><p class="eyebrow">이렇게 고쳐 보세요</p><ul class="tips" id="rTips"></ul>
+          <div class="row" style="margin-top:10px"><button class="btn" id="btnOverlay">내 동작과 겹쳐 보기</button></div></div>
+      </div>
+      <div class="card info">
+        <div><p class="eyebrow">동작 설명</p><p id="dDesc" class="muted"></p></div>
+        <a id="dDict" href="https://sldict.korean.go.kr/" target="_blank" rel="noopener">한국수어사전에서 영상 보기 ↗</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 퀴즈 -->
+  <section class="view quiz" id="view-quiz" hidden>
+    <div class="stack">
+      <figure class="pane"><figcaption>이 동작은 무슨 뜻일까요?</figcaption><canvas id="quizCanvas"></canvas>
+        <div class="pane-empty" id="quizEmpty" hidden><div>시범이 등록된 표현이 있어야 퀴즈를 낼 수 있어요.</div></div>
+      </figure>
+    </div>
+    <div class="stack">
+      <div class="row" style="justify-content:space-between"><h3>보고 맞히기</h3><span class="muted" id="quizScore">0 / 0</span></div>
+      <div class="choices" id="choices"></div>
+      <p class="muted" id="quizMsg" style="margin:0;min-height:1.6em"></p>
+      <div class="row"><button class="btn primary" id="quizNext">다음 문제</button></div>
+    </div>
+  </section>
+
+  <!-- 자막 -->
+  <section class="view caption" id="view-caption" hidden>
+    <div class="cap-stage">
+      <figure class="pane"><figcaption>카메라</figcaption><div class="slot" id="slot-caption"></div></figure>
+      <div class="capbar" id="capBar"><span class="ph">수어를 하면 여기에 자막이 나와요</span></div>
+    </div>
+    <div class="stack">
+      <div class="row"><button class="btn primary" id="capToggle">자막 시작 (카메라)</button>
+        <label class="btn" for="vidCap" style="display:inline-block">동영상·GIF로 자막 보기</label><input type="file" id="vidCap" accept="video/*,image/gif" hidden>
+        <button class="btn" id="capClear">자막 지우기</button></div>
+      <p class="notice" id="capState">한 표현을 한 뒤 손을 화면 아래로 내리면, 그 동작을 등록된 표현과 비교해 자막으로 보여 줘요.</p>
+      <div><p class="eyebrow">최근 인식 결과</p><ul class="loglist" id="capLog"></ul></div>
+    </div>
+  </section>
+
+  <!-- 시범 등록 -->
+  <section class="view teach" id="view-teach" hidden>
+    <aside class="wordlist" id="teachList" aria-label="등록할 표현"></aside>
+    <div class="detail">
+      <div class="detail-head">
+        <div><p class="eyebrow" id="tCat">인사</p><h2 id="tTitle">안녕하세요</h2></div>
+        <a id="tDict" href="https://sldict.korean.go.kr/" target="_blank" rel="noopener">한국수어사전에서 정확한 동작 확인 ↗</a>
+      </div>
+      <div class="stages">
+        <figure class="pane"><figcaption>카메라</figcaption><div class="slot" id="slot-teach"></div></figure>
+        <figure class="pane"><figcaption>방금 녹화한 시범</figcaption><canvas id="teachCanvas"></canvas>
+          <div class="pane-empty" id="teachEmpty"><div>녹화하면 손·얼굴 움직임이 여기에 재생돼요.</div></div></figure>
+      </div>
+      <div class="controls">
+        <label class="inline">녹화 시간 <select id="selDur"><option value="2">2초</option><option value="3" selected>3초</option><option value="4">4초</option><option value="5">5초</option></select></label>
+        <span class="spacer"></span>
+        <label class="btn" for="vidTeach" style="display:inline-block">동영상·GIF로 등록</label><input type="file" id="vidTeach" accept="video/*,image/gif" hidden>
+        <button class="btn primary" id="btnRec">카메라로 녹화 (3초 뒤 시작)</button>
+      </div>
+      <p class="notice" style="margin:0">카메라가 없으면 수어 동영상(mp4 등)이나 GIF를 넣어도 돼요. 한 파일에 표현 하나만, 10초 이내로 담긴 영상이 좋아요. 다른 사람이 만든 영상은 이용 조건을 확인하고 쓰세요.</p>
+      <div class="card stack">
+        <div><p class="eyebrow">녹화된 시범 (같은 표현을 3번 녹화하면 인식이 더 정확해요)</p><div class="samples" id="samples"></div></div>
+        <div><label class="eyebrow" for="descInput">동작 설명 (학습 화면에 보여요)</label>
+          <textarea id="descInput" placeholder="예: 오른손 주먹을 쥐고 가슴 앞에서 아래로 내린다. 사전 영상을 보고 확인한 내용을 적어 주세요."></textarea></div>
+      </div>
+      <div class="card stack">
+        <div class="row"><input type="text" id="newWord" placeholder="새 표현 (예: 학교)" maxlength="20" aria-label="새 표현"><button class="btn" id="addWord">표현 추가</button></div>
+        <div class="row">
+          <button class="btn" id="btnExport">시범 데이터 내보내기</button>
+          <label class="btn" for="fileImport" style="display:inline-block">가져오기</label><input type="file" id="fileImport" accept="application/json,.json" hidden>
+          <button class="btn danger" id="btnReset">전체 초기화</button>
+        </div>
+        <p class="notice">녹화한 시범은 이 브라우저에만 저장돼요. 팀원과 나누려면 '내보내기'로 파일을 만들고 다른 컴퓨터에서 '가져오기' 하세요. 카메라 영상 자체는 저장하지 않고 손·얼굴 위치 좌표만 저장해요.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- 카메라 무대 (화면마다 옮겨 다님) -->
+<div id="camStage">
+  <video id="video" playsinline muted></video>
+  <canvas id="liveCanvas"></canvas>
+  <div class="off"><div>카메라를 켜면 손과 얼굴의 움직임을 인식해요.</div><button class="btn primary" id="camOn">카메라 켜기</button></div>
+  <div class="overlay" id="overlay" hidden><div class="n" id="ovN"></div><div class="t" id="ovT"></div></div>
+  <div class="progress" id="recProgress"></div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+"use strict";
+const VER = "0.10.14";
+const VISION_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}/vision_bundle.mjs`;
+const WASM_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VER}/wasm`;
+const HAND_MODEL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const KEY = "sonmal-demo-v1";
+const N = 32; // 비교용 프레임 수
+
+// ── 표현 2개 (여기에 줄을 추가하면 표현이 늘어나요) ──
+const WORDS = [
+  {id:"hello", ko:"안녕하세요", cat:"인사", q:"안녕하세요"},
+  {id:"thanks", ko:"감사합니다", cat:"인사", q:"감사"},
+];
+const dictUrl = q => "https://sldict.korean.go.kr/front/search/searchAllList.do?searchKeyword=" + encodeURIComponent(q);
+
+// ── 저장 ──
+function loadData(){ try{ const d = JSON.parse(localStorage.getItem(KEY)); if(d && d.v===1) return d; }catch(e){} return {v:1, words:{}, custom:[], progress:{}}; }
+let DATA = loadData();
+function saveData(){ try{ localStorage.setItem(KEY, JSON.stringify(DATA)); return true; }catch(e){ toast("저장 공간이 부족해요. 일부 시범을 지우거나 내보내기 후 초기화해 주세요."); return false; } }
+const allWords = () => WORDS.concat(DATA.custom);
+const wordById = id => allWords().find(w => w.id === id);
+const entry = id => (DATA.words[id] ||= {samples:[], desc:"", dur:3});
+const isReg = id => !!(DATA.words[id] && DATA.words[id].samples.length);
+// 저장 공간 절약: 재생용 데이터는 가장 최근 시범 1개에만 보관
+const drawOf = id => { const e=DATA.words[id]; if(!e) return null; for(let i=e.samples.length-1;i>=0;i--) if(e.samples[i].draw) return e.samples[i].draw; return null; };
+
+// ── DOM ──
+const $ = id => document.getElementById(id);
+const video = $("video"), liveCanvas = $("liveCanvas"), camStage = $("camStage");
+let toastTimer = 0;
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.hidden=true, 3600); }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function setStatus(kind, text){ const s=$("modelStatus"); s.className="pill "+kind; s.textContent=text; }
+
+// ── AI 모델 ──
+let handLm=null, faceLm=null, modelsReady=false;
+let FACE_IDX=[], FACE_CONN=[];
+const HAND_CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+async function initModels(){
+  setStatus("loading","AI 모델 불러오는 중…");
+  try{
+    const vision = await import(VISION_URL);
+    const {FilesetResolver, HandLandmarker, FaceLandmarker} = vision;
+    const fs = await FilesetResolver.forVisionTasks(WASM_URL);
+    const make = async delegate => {
+      handLm = await HandLandmarker.createFromOptions(fs, {baseOptions:{modelAssetPath:HAND_MODEL, delegate}, runningMode:"VIDEO", numHands:2,
+        minHandDetectionConfidence:0.5, minHandPresenceConfidence:0.5, minTrackingConfidence:0.5});
+      faceLm = await FaceLandmarker.createFromOptions(fs, {baseOptions:{modelAssetPath:FACE_MODEL, delegate}, runningMode:"VIDEO", numFaces:1, outputFaceBlendshapes:true});
+    };
+    try{ await make("GPU"); }catch(e){ console.warn("GPU 실패, CPU로 전환", e); await make("CPU"); }
+    const sets=[FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, FaceLandmarker.FACE_LANDMARKS_LIPS, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
+      FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW].filter(Boolean);
+    const idx=new Set(); sets.forEach(s=>s.forEach(c=>{idx.add(c.start); idx.add(c.end);}));
+    FACE_IDX=[...idx].sort((a,b)=>a-b); const pos=new Map(FACE_IDX.map((v,i)=>[v,i]));
+    FACE_CONN=[]; sets.forEach(s=>s.forEach(c=>FACE_CONN.push([pos.get(c.start), pos.get(c.end)])));
+    modelsReady=true; setStatus("ok","AI 준비됨");
+    refreshPlayers();
+  }catch(e){
+    console.error(e); setStatus("err","AI 모델을 불러오지 못했어요 · 인터넷 연결을 확인하고 새로고침");
+  }
+}
+
+// ── 프레임 → 특징 ──
+const FACE_KEYS=[["browInnerUp"],["browOuterUpLeft","browOuterUpRight"],["browDownLeft","browDownRight"],["jawOpen"],["mouthSmileLeft","mouthSmileRight"],["mouthPucker"],["eyeWideLeft","eyeWideRight"],["mouthFrownLeft","mouthFrownRight"]];
+function faceFeat(cats){
+  if(!cats) return null;
+  const m={}; cats.forEach(c=>m[c.categoryName]=c.score);
+  return FACE_KEYS.map(ks=>ks.reduce((s,k)=>s+(m[k]||0),0)/ks.length);
+}
+const pack = pts => { const a=new Array(pts.length*2); pts.forEach((p,i)=>{a[i*2]=Math.round(p.x*1000); a[i*2+1]=Math.round(p.y*1000);}); return a; };
+function buildFrame(hr, fr, ar){
+  const t=performance.now();
+  const face = fr && fr.faceLandmarks && fr.faceLandmarks[0] || null;
+  const cats = fr && fr.faceBlendshapes && fr.faceBlendshapes[0] ? fr.faceBlendshapes[0].categories : null;
+  const X = p => p.x*ar;
+  let cx=0.5*ar, cy=0.42, fw=0.25;
+  if(face){ cx=X(face[1]); cy=face[1].y; fw=Math.hypot(X(face[234])-X(face[454]), face[234].y-face[454].y); if(!(fw>0.03)) fw=0.25; }
+  const hands = (hr && hr.landmarks ? hr.landmarks : []).slice(0,2);
+  const H = (hr && (hr.handedness || hr.handednesses)) || [];
+  const lab = i => (H[i] && H[i][0] && H[i][0].categoryName) || "";
+  const slots=[null,null];
+  // 원본(좌우 반전 안 된) 영상에서는 MediaPipe의 "Left"가 실제 오른손 → 0번 칸 = 오른손
+  if(hands.length===1){
+    const l=lab(0); slots[l==="Left"?0 : l==="Right"?1 : (X(hands[0][0])<cx?0:1)] = hands[0];
+  }else if(hands.length===2){
+    const l0=lab(0), l1=lab(1);
+    if(l0 && l1 && l0!==l1){ slots[l0==="Left"?0:1]=hands[0]; slots[l1==="Left"?0:1]=hands[1]; }
+    else { const s=[...hands].sort((a,b)=>a[0].x-b[0].x); slots[0]=s[0]; slots[1]=s[1]; }
+  }
+  const hf = h => {
+    const w=h[0]; const size=Math.hypot(X(h[9])-X(w), h[9].y-w.y)||0.05;
+    const s=[]; for(let i=1;i<21;i++) s.push((X(h[i])-X(w))/size, (h[i].y-w.y)/size);
+    const e=[4,8,12,16,20].map(i=>Math.hypot(X(h[i])-X(w), h[i].y-w.y)/size);
+    let px=0,py=0; [0,5,9,13,17].forEach(i=>{px+=X(h[i]); py+=h[i].y;});
+    return {p:[(px/5-cx)/fw, (py/5-cy)/fw], s, e};
+  };
+  return {
+    t, ar, hasHand: hands.length>0,
+    feat:{h:slots.map(h=>h?hf(h):null), f:faceFeat(cats)},
+    draw:{h:slots.map(h=>h?pack(h):null), f: face && FACE_IDX.length ? pack(FACE_IDX.map(i=>face[i])) : null}
+  };
+}
+const r3 = v => Math.round(v*1000)/1000;
+function roundDeep(o){ if(Array.isArray(o)) return o.map(roundDeep); if(o && typeof o==="object"){ const r={}; for(const k in o) r[k]=roundDeep(o[k]); return r; } return typeof o==="number" ? r3(o) : o; }
+
+// 녹화 프레임 → 비교용 시퀀스 + 재생용 데이터
+function prepare(frames){
+  let a=-1,b=-1; frames.forEach((f,i)=>{ if(f.hasHand){ if(a<0)a=i; b=i; } });
+  if(a<0) return null;
+  const tr=frames.slice(a,b+1);
+  if(tr.filter(f=>f.hasHand).length<5) return null;
+  const origin=[null,null];
+  const feats=tr.map(f=>({
+    h:f.feat.h.map((x,s)=>{ if(!x) return null; if(!origin[s]) origin[s]=x.p; return {p:x.p, m:[x.p[0]-origin[s][0], x.p[1]-origin[s][1]], s:x.s, e:x.e}; }),
+    f:f.feat.f
+  }));
+  const seq=[]; for(let i=0;i<N;i++) seq.push(feats[Math.round(i*(feats.length-1)/(N-1))]);
+  let df=tr.map(f=>f.draw); const dur=tr[tr.length-1].t-tr[0].t;
+  const step=df.length>60?Math.ceil(df.length/60):1; df=df.filter((_,i)=>i%step===0);
+  const dt=df.length>1?dur/(df.length-1):33;
+  return {seq:roundDeep(seq), draw:{ar:r3(tr[0].ar), dt:Math.round(dt), frames:df}};
+}
+
+// ── 비교 (DTW) ──
+const T={sh:0.6, lo:1.0, mo:0.8, fa:0.5};
+const W={sh:0.35, lo:0.25, mo:0.25, fa:0.15};
+function fcost(a,b){
+  let sh=0,lo=0,mo=0,n=0;
+  for(let s=0;s<2;s++){
+    const A=a.h[s], B=b.h[s];
+    if(!A && !B) continue;
+    n++;
+    if(!A || !B){ sh+=1.2; lo+=1.2; mo+=1.2; continue; }
+    let d=0; for(let i=0;i<40;i+=2) d+=Math.hypot(A.s[i]-B.s[i], A.s[i+1]-B.s[i+1]);
+    sh+=Math.min(d/20/T.sh,2);
+    lo+=Math.min(Math.hypot(A.p[0]-B.p[0],A.p[1]-B.p[1])/T.lo,2);
+    mo+=Math.min(Math.hypot(A.m[0]-B.m[0],A.m[1]-B.m[1])/T.mo,2);
+  }
+  if(n){ sh/=n; lo/=n; mo/=n; }
+  let fa=0;
+  if(a.f && b.f){ let d=0; for(let i=0;i<a.f.length;i++) d+=(a.f[i]-b.f[i])**2; fa=Math.min(Math.sqrt(d)/T.fa,2); }
+  return {sh,lo,mo,fa,tot:W.sh*sh+W.lo*lo+W.mo*mo+W.fa*fa};
+}
+const toScore = c => Math.round(100/(1+(c/0.6)**2));
+function compare(A,B){
+  const n=A.length, m=B.length, w=8;
+  const D=[...Array(n+1)].map(()=>new Float64Array(m+1).fill(Infinity));
+  const C=[...Array(n+1)].map(()=>new Array(m+1));
+  D[0][0]=0;
+  for(let i=1;i<=n;i++){
+    const j0=Math.max(1,i-w), j1=Math.min(m,i+w);
+    for(let j=j0;j<=j1;j++){
+      const c=fcost(A[i-1],B[j-1]); C[i][j]=c;
+      D[i][j]=c.tot+Math.min(D[i-1][j],D[i][j-1],D[i-1][j-1]);
+    }
+  }
+  let i=n,j=m; const path=[]; const acc={sh:0,lo:0,mo:0,fa:0};
+  while(i>0 && j>0){
+    const c=C[i][j]; path.push([i-1,j-1]); acc.sh+=c.sh; acc.lo+=c.lo; acc.mo+=c.mo; acc.fa+=c.fa;
+    const d=D[i-1][j-1], u=D[i-1][j], l=D[i][j-1];
+    if(d<=u && d<=l){ i--; j--; } else if(u<l){ i--; } else { j--; }
+  }
+  path.reverse();
+  const L=path.length||1;
+  const comps={sh:toScore(acc.sh/L), lo:toScore(acc.lo/L), mo:toScore(acc.mo/L), fa:toScore(acc.fa/L)};
+  const overall=Math.round(W.sh*comps.sh+W.lo*comps.lo+W.mo*comps.mo+W.fa*comps.fa);
+  return {overall, comps, path};
+}
+function compareWord(seq, id){
+  const e=DATA.words[id]; if(!e || !e.samples.length) return null;
+  let best=null;
+  e.samples.forEach((s,k)=>{ const r=compare(seq, s.seq); if(!best || r.overall>best.overall){ best=r; best.k=k; } });
+  return best;
+}
+function classify(seq){
+  return allWords().filter(w=>isReg(w.id)).map(w=>({w, r:compareWord(seq,w.id)})).sort((a,b)=>b.r.overall-a.r.overall);
+}
+
+// ── 교정 피드백 ──
+const FINGERS=["엄지를","검지를","중지를","약지를","새끼손가락을"];
+function feedback(A,B,res){
+  const tips=[];
+  const usage=seq=>[0,1].map(s=>seq.filter(f=>f.h[s]).length/seq.length);
+  const ua=usage(A), ub=usage(B);
+  const bothB=ub[0]>0.4&&ub[1]>0.4, bothA=ua[0]>0.4&&ua[1]>0.4;
+  if(bothB && !bothA) tips.push("이 표현은 양손을 함께 써요. 두 손이 모두 화면에 보이게 해 주세요.");
+  else if(!bothB && bothA) tips.push("이 표현은 한 손으로 해요. 쓰지 않는 손은 화면 아래로 내려 주세요.");
+  let dx=0,dy=0,np=0; const ext=[0,0,0,0,0]; const fd=new Array(8).fill(0); let nf=0;
+  res.path.forEach(([i,j])=>{
+    const a=A[i], b=B[j];
+    for(let s=0;s<2;s++) if(a.h[s] && b.h[s]){
+      dx+=a.h[s].p[0]-b.h[s].p[0]; dy+=a.h[s].p[1]-b.h[s].p[1]; np++;
+      for(let k=0;k<5;k++) ext[k]+=a.h[s].e[k]-b.h[s].e[k];
+    }
+    if(a.f && b.f){ for(let k=0;k<8;k++) fd[k]+=a.f[k]-b.f[k]; nf++; }
+  });
+  if(np){
+    dx/=np; dy/=np;
+    if(dy>0.35) tips.push("손 위치가 시범보다 낮아요. 조금 더 위에서 해 보세요.");
+    else if(dy<-0.35) tips.push("손 위치가 시범보다 높아요. 조금 더 아래에서 해 보세요.");
+    if(dx>0.35) tips.push("화면에서 볼 때 손을 조금 더 오른쪽으로 옮겨 보세요.");
+    else if(dx<-0.35) tips.push("화면에서 볼 때 손을 조금 더 왼쪽으로 옮겨 보세요.");
+    const fs=ext.map((v,k)=>({k,d:v/np})).filter(x=>Math.abs(x.d)>0.3).sort((p,q)=>Math.abs(q.d)-Math.abs(p.d)).slice(0,2);
+    fs.forEach(x=>tips.push(`${FINGERS[x.k]} 시범보다 ${x.d<0?"더 펴":"더 접어"} 보세요.`));
+  }
+  // 움직임 크기 = 손이 지나간 범위(가로·세로 폭의 대각선). 흔들림에 덜 민감함
+  const plen=(seq,s)=>{ let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; seq.forEach(f=>{ const h=f.h[s]; if(h){ x0=Math.min(x0,h.p[0]); x1=Math.max(x1,h.p[0]); y0=Math.min(y0,h.p[1]); y1=Math.max(y1,h.p[1]); } }); return x1<x0?0:Math.hypot(x1-x0,y1-y0); };
+  const s=plen(B,0)>=plen(B,1)?0:1, la=plen(A,s), lb=plen(B,s);
+  if(lb>0.5){ if(la<lb*0.55) tips.push("움직임이 시범보다 작아요. 더 크게 움직여 보세요."); else if(la>lb*1.8) tips.push("움직임이 시범보다 커요. 조금 작게 해 보세요."); }
+  else if(la>1.0) tips.push("이 표현은 손을 많이 움직이지 않아요. 제자리에서 해 보세요.");
+  if(nf){
+    const f=fd.map(v=>v/nf);
+    if((f[0]+f[1])/2<-0.18) tips.push("시범처럼 눈썹을 더 올려 보세요. 표정도 수어의 일부예요.");
+    if(f[2]<-0.2) tips.push("시범처럼 미간을 찡그려 보세요.");
+    if(f[3]<-0.2) tips.push("시범처럼 입을 더 벌려 보세요.");
+    if(f[4]<-0.2) tips.push("시범처럼 미소를 지어 보세요.");
+    if(f[5]<-0.2) tips.push("시범처럼 입을 오므려 보세요.");
+  }
+  if(!tips.length) tips.push(res.overall>=80 ? "시범과 거의 같아요. 아주 잘했어요!" : "시범을 0.5배 속도로 다시 보고 천천히 따라 해 보세요.");
+  return tips;
+}
+
+// ── 그리기 ──
+function fit(c){
+  const r=c.getBoundingClientRect(), d=window.devicePixelRatio||1;
+  const w=Math.max(1,Math.round(r.width*d)), h=Math.max(1,Math.round(r.height*d));
+  if(c.width!==w || c.height!==h){ c.width=w; c.height=h; }
+  const ctx=c.getContext("2d"); ctx.setTransform(d,0,0,d,0,0); return {ctx, W:r.width, H:r.height};
+}
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+let COL=null; const colors=()=>COL||(COL={hand:css("--sk-hand"), joint:css("--sk-joint"), face:css("--sk-face"), mine:css("--sk-mine")});
+function drawSkel(ctx,W,H,fr,ar,mirror,handCol,alpha){
+  if(!fr) return;
+  let vw=W, vh=W/ar; if(vh>H){ vh=H; vw=H*ar; }
+  const ox=(W-vw)/2, oy=(H-vh)/2;
+  const P=(a,i)=>[ox+(mirror?1-a[i*2]/1000:a[i*2]/1000)*vw, oy+a[i*2+1]/1000*vh];
+  const c=colors(); ctx.globalAlpha=alpha==null?1:alpha; ctx.lineCap="round"; ctx.lineJoin="round";
+  if(fr.f && FACE_CONN.length && fr.f.length===FACE_IDX.length*2){
+    ctx.strokeStyle=c.face; ctx.lineWidth=1.4; ctx.beginPath();
+    FACE_CONN.forEach(([a,b])=>{ const p=P(fr.f,a), q=P(fr.f,b); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); }); ctx.stroke();
+  }
+  fr.h.forEach(h=>{
+    if(!h) return;
+    ctx.strokeStyle=handCol||c.hand; ctx.lineWidth=3.5; ctx.beginPath();
+    HAND_CONN.forEach(([a,b])=>{ const p=P(h,a), q=P(h,b); ctx.moveTo(p[0],p[1]); ctx.lineTo(q[0],q[1]); }); ctx.stroke();
+    ctx.fillStyle=handCol?handCol:c.joint;
+    for(let i=0;i<21;i++){ const p=P(h,i); ctx.beginPath(); ctx.arc(p[0],p[1],(i>0&&i%4===0)?4.2:2.8,0,Math.PI*2); ctx.fill(); }
+  });
+  ctx.globalAlpha=1;
+}
+class Player{
+  constructor(canvas){ this.c=canvas; this.raf=0; this.d=null; }
+  play(draw, opt={}){
+    this.stop(); this.d=draw; this.opt=opt; this.t0=performance.now();
+    const tick=now=>{
+      const {ctx,W,H}=fit(this.c); ctx.clearRect(0,0,W,H);
+      const speed=this.opt.speed||1, len=draw.frames.length, total=len*draw.dt/speed;
+      let el=now-this.t0; const hold=600;
+      if(el>total+hold){ if(this.opt.loop){ this.t0=now; el=0; } else { el=total; } }
+      const prog=Math.min(1, el/total);
+      const i=Math.min(len-1, Math.floor(prog*(len-1)+0.0001));
+      const mirror=this.opt.mirror!==false;
+      if(this.opt.overlay){ const o=this.opt.overlay; drawSkel(ctx,W,H,o.frames[Math.min(o.frames.length-1,Math.floor(prog*(o.frames.length-1)))],o.ar,mirror,colors().mine,0.9); }
+      drawSkel(ctx,W,H,draw.frames[i],draw.ar,mirror,null,1);
+      ctx.fillStyle="rgba(255,255,255,.18)"; ctx.fillRect(0,H-4,W,4); ctx.fillStyle=colors().hand; ctx.fillRect(0,H-4,W*prog,4);
+      if(this.opt.overlay){ ctx.font="600 12px "+css("--font-body"); ctx.fillStyle=colors().hand; ctx.fillText("● 시범",12,H-14); ctx.fillStyle=colors().mine; ctx.fillText("● 나",64,H-14); }
+      if(this.opt.loop || el<total+hold) this.raf=requestAnimationFrame(tick); else this.raf=0;
+    };
+    this.raf=requestAnimationFrame(tick);
+  }
+  stop(){ if(this.raf) cancelAnimationFrame(this.raf); this.raf=0; }
+  clear(){ this.stop(); const {ctx,W,H}=fit(this.c); ctx.clearRect(0,0,W,H); }
+}
+const refPlayer=new Player($("refCanvas")), quizPlayer=new Player($("quizCanvas")), teachPlayer=new Player($("teachCanvas"));
+
+// ── 카메라 ──
+let camOn=false, lastTs=-1, busy=false;
+const listeners=new Set();
+async function startCamera(){
+  if(camOn) return true;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ toast("이 브라우저에서는 카메라를 쓸 수 없어요. 크롬으로 열어 주세요."); return false; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},facingMode:"user"},audio:false});
+    video.srcObject=stream; await video.play();
+  }catch(e){ console.warn(e); toast("카메라를 켤 수 없어요. 주소창 왼쪽의 카메라 권한을 '허용'으로 바꿔 주세요."); return false; }
+  camOn=true; camStage.classList.add("on"); requestAnimationFrame(loop); return true;
+}
+function loop(){
+  if(!camOn) return;
+  requestAnimationFrame(loop);
+  if(fileRunning || !modelsReady || video.readyState<2 || !video.videoWidth) return;
+  const ts=performance.now(); if(ts-lastTs<30) return; lastTs=ts;
+  let hr, fr;
+  try{ hr=handLm.detectForVideo(video, ts); fr=faceLm.detectForVideo(video, ts); }catch(e){ console.warn(e); return; }
+  const f=buildFrame(hr, fr, video.videoWidth/video.videoHeight);
+  const {ctx,W,H}=fit(liveCanvas); ctx.clearRect(0,0,W,H); drawSkel(ctx,W,H,f.draw,f.ar,false,null,0.95);
+  listeners.forEach(fn=>fn(f));
+}
+$("camOn").onclick=()=>startCamera();
+function moveStage(slotId){ const s=$(slotId); if(s && camStage.parentElement!==s) s.appendChild(camStage); }
+
+const ov=$("overlay"), ovN=$("ovN"), ovT=$("ovT"), prog=$("recProgress");
+async function recordClip(sec){
+  if(busy) return null;
+  if(!modelsReady){ toast("AI 모델이 아직 준비되지 않았어요. 잠시 뒤 다시 눌러 주세요."); return null; }
+  if(!await startCamera()) return null;
+  busy=true; setBusyButtons(true);
+  ov.hidden=false; ov.querySelector(".rec")?.remove();
+  for(let n=3;n>=1;n--){ ovN.textContent=n; ovT.textContent="손을 내리고 준비하세요"; await sleep(1000); }
+  ovN.textContent=""; ovT.textContent=""; const rec=document.createElement("div"); rec.className="rec"; rec.textContent="녹화 중"; ov.appendChild(rec);
+  const frames=[]; const fn=f=>frames.push(f); listeners.add(fn);
+  const t0=performance.now(), ms=sec*1000;
+  await new Promise(res=>{ const step=()=>{ const p=(performance.now()-t0)/ms; prog.style.width=Math.min(100,p*100)+"%"; if(p>=1) res(); else requestAnimationFrame(step); }; step(); });
+  listeners.delete(fn); rec.remove(); ov.hidden=true; prog.style.width="0";
+  busy=false; setBusyButtons(false);
+  return frames;
+}
+function setBusyButtons(b){ ["btnTry","btnRec","capToggle"].forEach(id=>$(id).disabled=b); }
+
+// ── 동영상 파일 분석 (카메라 대신) ──
+let fileRunning=false;
+async function runVideoFile(file, slotId){
+  if(!modelsReady){ toast("AI 모델이 아직 준비되지 않았어요. 잠시 뒤 다시 해 주세요."); return null; }
+  if(busy || fileRunning) return null;
+  fileRunning=true; busy=true; setBusyButtons(true);
+  const wrap=document.createElement("div"); wrap.className="filewrap";
+  const v=document.createElement("video"); v.muted=true; v.playsInline=true; v.preload="auto";
+  const cv=document.createElement("canvas"); const tag=document.createElement("span"); tag.className="tag"; tag.textContent="동영상 분석 중";
+  wrap.append(v,cv,tag); $(slotId).appendChild(wrap);
+  const frames=[];
+  const isGif=/gif$/i.test(file.type) || /\.gif$/i.test(file.name);
+  let url="";
+  if(isGif){
+    tag.textContent="GIF 분석 중";
+    try{ await analyzeGif(file, wrap, cv, frames); }
+    catch(e){ console.warn(e); toast("GIF를 열 수 없어요. 크롬 최신 버전에서 다시 해 주세요."); frames.length=0; }
+  } else try{
+    url=URL.createObjectURL(file); v.src=url;
+    await new Promise((res,rej)=>{ v.onloadeddata=res; v.onerror=()=>rej(new Error("load")); });
+    v.playbackRate=0.5; // 천천히 재생해서 프레임을 촘촘히 분석
+    await v.play();
+    await new Promise(res=>{
+      let done=false; const finish=()=>{ if(!done){ done=true; res(); } };
+      v.onended=finish; setTimeout(finish, 30000);
+      const step=()=>{
+        if(done) return;
+        if(v.ended || v.currentTime>10){ finish(); return; }
+        const ts=Math.max(performance.now(), lastTs+1); lastTs=ts;
+        try{
+          const hr=handLm.detectForVideo(v,ts), fr=faceLm.detectForVideo(v,ts);
+          const f=buildFrame(hr,fr,v.videoWidth/v.videoHeight); f.t=v.currentTime*1000;
+          frames.push(f);
+          const {ctx,W,H}=fit(cv); ctx.clearRect(0,0,W,H); drawSkel(ctx,W,H,f.draw,f.ar,false,null,0.95);
+          listeners.forEach(fn=>fn(f));
+        }catch(e){ console.warn(e); }
+        schedule();
+      };
+      const schedule=()=> v.requestVideoFrameCallback ? v.requestVideoFrameCallback(step) : requestAnimationFrame(step);
+      schedule();
+    });
+  }catch(e){ console.warn(e); toast("동영상을 열 수 없어요. mp4 파일인지 확인해 주세요."); frames.length=0; }
+  v.pause(); if(url) URL.revokeObjectURL(url);
+  setTimeout(()=>wrap.remove(), 500);
+  fileRunning=false; busy=false; setBusyButtons(false);
+  return frames.length ? frames : null;
+}
+// GIF: 한 장면씩 꺼내서 AI로 분석 (크롬의 ImageDecoder 사용)
+async function analyzeGif(file, wrap, cv, frames){
+  if(!("ImageDecoder" in window)) return analyzeGifImg(file, wrap, cv, frames);
+  const dec=new ImageDecoder({data:await file.arrayBuffer(), type:"image/gif"});
+  await dec.completed;
+  const count=dec.tracks.selectedTrack.frameCount;
+  const view=document.createElement("canvas"); wrap.insertBefore(view, cv);
+  let t=0;
+  for(let i=0;i<count && t<=10000;i++){
+    const {image}=await dec.decode({frameIndex:i});
+    view.width=image.displayWidth; view.height=image.displayHeight;
+    view.getContext("2d").drawImage(image,0,0);
+    const dur=image.duration ? image.duration/1000 : 100; // 마이크로초 → 밀리초
+    image.close();
+    const ts=Math.max(performance.now(), lastTs+1); lastTs=ts;
+    try{
+      const hr=handLm.detectForVideo(view,ts), fr=faceLm.detectForVideo(view,ts);
+      const f=buildFrame(hr,fr,view.width/view.height); f.t=t;
+      frames.push(f);
+      const {ctx,W,H}=fit(cv); ctx.clearRect(0,0,W,H); drawSkel(ctx,W,H,f.draw,f.ar,false,null,0.95);
+      listeners.forEach(fn=>fn(f));
+    }catch(e){ console.warn(e); }
+    t+=dur;
+    await sleep(Math.min(dur, 80)); // 분석 과정을 화면에서 볼 수 있게 잠깐 쉼
+  }
+  dec.close();
+}
+// ImageDecoder가 없는 브라우저용: GIF를 그림으로 재생하면서 화면을 찍어 분석
+async function analyzeGifImg(file, wrap, cv, frames){
+  const buf=new Uint8Array(await file.arrayBuffer());
+  let total=0; // GIF 안의 장면별 시간(1/100초)을 더해 전체 길이 계산
+  for(let i=0;i+5<buf.length;i++) if(buf[i]===0x21 && buf[i+1]===0xF9 && buf[i+2]===0x04){ const d=buf[i+4]|(buf[i+5]<<8); total+=(d||10)*10; }
+  total=Math.min(Math.max(total,500),10000);
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  await new Promise((res,rej)=>{ img.onload=res; img.onerror=()=>rej(new Error("gif load")); img.src=url; });
+  img.style.cssText="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"; wrap.insertBefore(img, cv);
+  const view=document.createElement("canvas"); view.width=img.naturalWidth; view.height=img.naturalHeight;
+  const vctx=view.getContext("2d");
+  const t0=performance.now();
+  while(performance.now()-t0<total){
+    vctx.clearRect(0,0,view.width,view.height); vctx.drawImage(img,0,0);
+    const ts=Math.max(performance.now(), lastTs+1); lastTs=ts;
+    try{
+      const hr=handLm.detectForVideo(view,ts), fr=faceLm.detectForVideo(view,ts);
+      const f=buildFrame(hr,fr,view.width/view.height); f.t=performance.now()-t0;
+      frames.push(f);
+      const {ctx,W,H}=fit(cv); ctx.clearRect(0,0,W,H); drawSkel(ctx,W,H,f.draw,f.ar,false,null,0.95);
+      listeners.forEach(fn=>fn(f));
+    }catch(e){ console.warn(e); }
+    await sleep(40);
+  }
+  URL.revokeObjectURL(url);
+}
+
+// ── 통계 ──
+function renderStats(){
+  const words=allWords(), reg=words.filter(w=>isReg(w.id)).length;
+  $("stReg").textContent=`${reg}/${words.length}`;
+  const ps=words.map(w=>DATA.progress[w.id]).filter(p=>p && p.tries>0);
+  $("stPracticed").textContent=ps.length;
+  $("stAvg").textContent=ps.length?Math.round(ps.reduce((s,p)=>s+p.best,0)/ps.length)+"점":"-";
+}
+
+// ── 목록 ──
+function renderList(el, current, onPick){
+  el.innerHTML="";
+  const cats=[...new Set(allWords().map(w=>w.cat))];
+  let n=0;
+  cats.forEach(cat=>{
+    const h=document.createElement("h3"); h.textContent=cat; el.appendChild(h);
+    allWords().filter(w=>w.cat===cat).forEach(w=>{
+      n++;
+      const b=document.createElement("button"); b.setAttribute("aria-current", w.id===current?"true":"false");
+      const cnt=DATA.words[w.id]?DATA.words[w.id].samples.length:0;
+      const best=DATA.progress[w.id]?.best;
+      b.innerHTML=`<span class="num">${n}</span><span class="w"></span><span class="dot ${cnt?"reg":""}"></span>`;
+      b.querySelector(".w").textContent=w.ko;
+      b.querySelector(".dot").textContent = el.id==="teachList" ? `${cnt}/3` : (best!=null ? best+"점" : (cnt?"시범 있음":"시범 없음"));
+      b.onclick=()=>onPick(w.id);
+      el.appendChild(b);
+    });
+  });
+}
+
+// ── 학습 화면 ──
+let curId=WORDS[0].id, lastAttempt=null;
+function selectWord(id){ curId=id; lastAttempt=null; $("result").hidden=true; renderLearn(); }
+function renderLearn(){
+  const w=wordById(curId); const e=DATA.words[curId];
+  renderList($("wordList"), curId, selectWord);
+  $("dCat").textContent=w.cat; $("dTitle").textContent=w.ko;
+  const reg=isReg(curId);
+  const st=$("dState"); st.className="pill "+(reg?"ok":""); st.textContent=reg?`시범 ${e.samples.length}개`:"시범 없음";
+  $("refEmpty").hidden=reg; $("btnPlay").disabled=!reg; $("btnTry").disabled=!reg||busy;
+  $("dDesc").textContent=(e && e.desc) ? e.desc : "아직 설명이 없어요. 팀원이 '시범 등록' 탭에서 적을 수 있어요. 정확한 동작은 오른쪽 한국수어사전 영상으로 확인하세요.";
+  $("dDict").href=dictUrl(w.q||w.ko);
+  if(reg) playRef(); else refPlayer.clear();
+}
+function playRef(overlay){
+  const d=drawOf(curId); if(!d){ refPlayer.clear(); return; }
+  refPlayer.play(d,{speed:+$("selSpeed").value, mirror:$("chkMirror").checked, loop:!overlay, overlay});
+}
+$("btnPlay").onclick=()=>playRef();
+$("selSpeed").onchange=()=>playRef();
+$("chkMirror").onchange=()=>playRef();
+$("goTeach").onclick=()=>{ teachId=curId; showView("teach"); };
+$("btnOverlay").onclick=()=>{ if(lastAttempt) playRef(lastAttempt.draw); };
+$("btnTry").onclick=async()=>{
+  const id=curId, e=DATA.words[id]; if(!e||!e.samples.length) return;
+  refPlayer.stop();
+  const frames=await recordClip(e.dur||3);
+  if(!frames) return;
+  const p=prepare(frames);
+  if(!p){ toast("손이 거의 보이지 않았어요. 손이 화면 안에 들어오게 다시 해 보세요."); playRef(); return; }
+  const r=compareWord(p.seq, id); const ref=e.samples[r.k].seq;
+  lastAttempt=p;
+  const pr=DATA.progress[id]||(DATA.progress[id]={best:0,tries:0}); pr.tries++; pr.best=Math.max(pr.best, r.overall); saveData();
+  showResult(r, feedback(p.seq, ref, r));
+  renderStats(); renderList($("wordList"), curId, selectWord);
+  playRef(p.draw);
+};
+function showResult(r, tips){
+  $("result").hidden=false;
+  const sc=$("rScore"); sc.textContent=r.overall;
+  sc.style.color = r.overall>=80?"var(--good)":r.overall>=60?"var(--warn)":"var(--bad)";
+  $("rLabel").textContent = r.overall>=80?"점 · 잘했어요":r.overall>=60?"점 · 조금만 더":"점 · 다시 해 봐요";
+  const names={sh:"손 모양",lo:"위치",mo:"움직임",fa:"표정"};
+  $("rBars").innerHTML="";
+  Object.keys(names).forEach(k=>{
+    const d=document.createElement("div"); d.className="bar";
+    d.innerHTML=`<span>${names[k]}</span><span class="track"><span class="fill" style="width:0"></span></span><span class="v">${r.comps[k]}</span>`;
+    $("rBars").appendChild(d); requestAnimationFrame(()=>d.querySelector(".fill").style.width=r.comps[k]+"%");
+  });
+  const ul=$("rTips"); ul.innerHTML=""; tips.forEach(t=>{ const li=document.createElement("li"); li.textContent=t; ul.appendChild(li); });
+}
+
+// ── 퀴즈 ──
+const quiz={cur:null, right:0, total:0, answered:false};
+const shuffle=a=>{ a=[...a]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+function newQuiz(){
+  const reg=allWords().filter(w=>isReg(w.id));
+  const ch=$("choices"); ch.innerHTML=""; $("quizMsg").textContent="";
+  if(!reg.length){ $("quizEmpty").hidden=false; quizPlayer.clear(); $("quizNext").disabled=true; return; }
+  $("quizEmpty").hidden=true; $("quizNext").disabled=false;
+  let cur=reg[Math.floor(Math.random()*reg.length)];
+  if(reg.length>1 && quiz.cur && cur.id===quiz.cur.id) cur=reg.find(w=>w.id!==quiz.cur.id);
+  quiz.cur=cur; quiz.answered=false;
+  const others=shuffle(allWords().filter(w=>w.id!==cur.id)).slice(0,3);
+  shuffle([cur,...others]).forEach(w=>{
+    const b=document.createElement("button"); b.textContent=w.ko;
+    b.onclick=()=>{
+      if(quiz.answered) return; quiz.answered=true; quiz.total++;
+      const ok=w.id===cur.id; if(ok) quiz.right++;
+      [...ch.children].forEach(x=>{ x.disabled=true; if(x.textContent===cur.ko) x.classList.add("right"); });
+      if(!ok) b.classList.add("wrong");
+      $("quizMsg").textContent= ok ? "정답이에요!" : `정답은 '${cur.ko}'예요. 학습 탭에서 다시 연습해 보세요.`;
+      $("quizScore").textContent=`${quiz.right} / ${quiz.total}`;
+    };
+    ch.appendChild(b);
+  });
+  const d=drawOf(cur.id); if(d) quizPlayer.play(d, {loop:true, mirror:true}); else quizPlayer.clear();
+}
+$("quizNext").onclick=newQuiz;
+
+// ── 자막 체험 ──
+let capOn=false, seg=[], inSeg=false, quiet=0;
+const capWords=[];
+function capFrame(f){
+  if(f.hasHand){ seg.push(f); if(!inSeg) setCapState("동작을 보고 있어요… 끝나면 손을 내려 주세요."); inSeg=true; quiet=0; }
+  else if(inSeg){ seg.push(f); quiet++; if(quiet>=9) finishSeg(); }
+  if(inSeg && seg.length && f.t-seg[0].t>6000) finishSeg();
+}
+function finishSeg(){
+  const frames=seg; seg=[]; inSeg=false; quiet=0;
+  const p=prepare(frames); if(!p){ setCapState("손이 잠깐만 보였어요. 표현을 끝까지 해 주세요."); return; }
+  const list=classify(p.seq);
+  if(!list.length){ setCapState("등록된 시범이 없어요. 시범 등록 탭에서 먼저 녹화해 주세요."); return; }
+  const top=list[0], second=list[1];
+  const ok = top.r.overall>=60 && (!second || top.r.overall-second.r.overall>=4);
+  const li=document.createElement("li");
+  li.innerHTML=`<span></span><span class="muted"></span>`;
+  li.firstChild.textContent = ok ? top.w.ko : `알 수 없음 (가장 비슷한 표현: ${top.w.ko})`;
+  li.lastChild.textContent = top.r.overall+"점";
+  $("capLog").prepend(li); while($("capLog").children.length>12) $("capLog").lastChild.remove();
+  if(ok){ capWords.push(top.w.ko); renderCap(); setCapState(`'${top.w.ko}'(으)로 인식했어요. 다음 표현을 해 보세요.`); }
+  else setCapState("어떤 표현인지 확실하지 않아요. 시범처럼 천천히 다시 해 보세요.");
+}
+function renderCap(){
+  const bar=$("capBar"); bar.innerHTML="";
+  if(!capWords.length){ bar.innerHTML='<span class="ph">수어를 하면 여기에 자막이 나와요</span>'; return; }
+  capWords.slice(-8).forEach((t,i,arr)=>{ const s=document.createElement("span"); s.textContent=t; if(i===arr.length-1) s.className="wd"; bar.appendChild(s); });
+}
+function setCapState(t){ $("capState").textContent=t; }
+async function capStart(){
+  if(!modelsReady){ toast("AI 모델이 아직 준비되지 않았어요."); return; }
+  if(!allWords().some(w=>isReg(w.id))){ toast("먼저 시범 등록 탭에서 표현을 1개 이상 녹화해 주세요."); return; }
+  if(!await startCamera()) return;
+  capOn=true; seg=[]; inSeg=false; listeners.add(capFrame); $("capToggle").textContent="자막 멈춤";
+  setCapState("준비됐어요. 손을 화면 아래에 두었다가 표현을 하고, 끝나면 다시 내려 주세요.");
+}
+function capStop(){ capOn=false; listeners.delete(capFrame); seg=[]; inSeg=false; $("capToggle").textContent="자막 시작 (카메라)"; }
+$("vidCap").onchange=async ev=>{
+  const file=ev.target.files[0]; ev.target.value=""; if(!file) return;
+  if(!allWords().some(w=>isReg(w.id))){ toast("먼저 시범 등록 탭에서 표현을 1개 이상 등록해 주세요."); return; }
+  if(capOn) capStop();
+  capOn=true; seg=[]; inSeg=false; listeners.add(capFrame);
+  setCapState("동영상을 분석하고 있어요…");
+  const frames=await runVideoFile(file, "slot-caption");
+  if(inSeg) finishSeg();
+  capStop();
+  if(frames) setCapState("동영상 분석이 끝났어요. 다른 동영상을 넣거나 카메라로 해 볼 수 있어요.");
+};
+$("capToggle").onclick=()=>capOn?capStop():capStart();
+$("capClear").onclick=()=>{ capWords.length=0; renderCap(); $("capLog").innerHTML=""; };
+
+// ── 시범 등록 ──
+let teachId=WORDS[0].id, resetArmed=0;
+function selectTeach(id){ teachId=id; renderTeach(); }
+function renderTeach(){
+  const w=wordById(teachId), e=entry(teachId);
+  renderList($("teachList"), teachId, selectTeach);
+  $("tCat").textContent=w.cat; $("tTitle").textContent=w.ko; $("tDict").href=dictUrl(w.q||w.ko);
+  $("selDur").value=String(e.dur||3); $("descInput").value=e.desc||"";
+  const box=$("samples"); box.innerHTML="";
+  if(!e.samples.length){ box.innerHTML='<span class="muted">아직 없어요. 아래 녹화 버튼으로 시작하세요.</span>'; }
+  e.samples.forEach((s,k)=>{
+    const c=document.createElement("span"); c.className="chip";
+    c.innerHTML=`<button type="button" class="play" aria-label="재생" style="width:auto;padding:0 6px;background:none">${s.draw?"▶ ":""}시범 ${k+1}</button><button type="button" aria-label="삭제">×</button>`;
+    c.children[0].onclick=()=>{ if(!s.draw) return; $("teachEmpty").hidden=true; teachPlayer.play(s.draw,{mirror:true}); };
+    c.children[1].onclick=()=>{ e.samples.splice(k,1); saveData(); renderTeach(); renderStats(); };
+    box.appendChild(c);
+  });
+  const d=drawOf(teachId);
+  $("teachEmpty").hidden=!!d;
+  if(d) teachPlayer.play(d,{mirror:true, loop:true}); else teachPlayer.clear();
+}
+$("selDur").onchange=()=>{ entry(teachId).dur=+$("selDur").value; saveData(); };
+$("descInput").oninput=()=>{ entry(teachId).desc=$("descInput").value.slice(0,400); saveData(); };
+$("btnRec").onclick=async()=>{
+  const id=teachId, e=entry(id);
+  teachPlayer.stop();
+  const frames=await recordClip(e.dur||3); if(!frames) return;
+  const p=prepare(frames);
+  if(!p){ toast("손이 거의 보이지 않았어요. 손이 화면 안에 들어오게 다시 녹화해 주세요."); return; }
+  saveSample(id, p);
+};
+$("vidTeach").onchange=async ev=>{
+  const file=ev.target.files[0]; ev.target.value=""; if(!file) return;
+  const id=teachId; teachPlayer.stop();
+  const frames=await runVideoFile(file, "slot-teach");
+  if(!frames){ renderTeach(); return; }
+  const p=prepare(frames);
+  if(!p){ toast("파일에서 손을 찾지 못했어요. 손이 잘 보이는 영상인지 확인해 주세요."); renderTeach(); return; }
+  saveSample(id, p);
+};
+function saveSample(id, p){
+  const e=entry(id);
+  const oldDraws=e.samples.map(s=>s.draw);
+  e.samples.forEach(s=>s.draw=null);
+  e.samples.push(p); if(e.samples.length>5){ e.samples.shift(); oldDraws.shift(); }
+  if(!saveData()){ e.samples.pop(); e.samples.forEach((s,i)=>s.draw=oldDraws[i]||null); return; }
+  toast(`'${wordById(id).ko}' 시범 ${e.samples.length}개째를 저장했어요.`);
+  renderTeach(); renderStats();
+}
+$("addWord").onclick=()=>{
+  const v=$("newWord").value.trim(); if(!v) return;
+  if(allWords().some(w=>w.ko===v)){ toast("이미 있는 표현이에요."); return; }
+  const w={id:"c"+Date.now().toString(36), ko:v, cat:"직접 추가", q:v}; DATA.custom.push(w); saveData();
+  $("newWord").value=""; teachId=w.id; renderTeach(); renderStats();
+};
+$("btnExport").onclick=()=>{
+  const blob=new Blob([JSON.stringify(DATA)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="손말배움-시범데이터.json"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+};
+$("fileImport").onchange=async ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  try{
+    const d=JSON.parse(await f.text()); if(!d || d.v!==1 || typeof d.words!=="object") throw 0;
+    (d.custom||[]).forEach(w=>{ if(w && w.id && w.ko && !allWords().some(x=>x.id===w.id)) DATA.custom.push({id:String(w.id), ko:String(w.ko).slice(0,20), cat:"직접 추가", q:String(w.ko)}); });
+    let n=0; Object.keys(d.words).forEach(id=>{ const src=d.words[id]; if(!wordById(id) || !src || !Array.isArray(src.samples)) return; const e=entry(id); e.samples=src.samples.slice(0,5); if(src.desc) e.desc=String(src.desc).slice(0,400); if(src.dur) e.dur=+src.dur||3; n++; });
+    saveData(); toast(`표현 ${n}개의 시범을 가져왔어요.`); renderAll();
+  }catch(e){ toast("손말배움에서 내보낸 파일이 아니에요."); }
+  ev.target.value="";
+};
+$("btnReset").onclick=()=>{
+  const b=$("btnReset");
+  if(!resetArmed){ resetArmed=1; b.textContent="한 번 더 누르면 모두 지워져요"; setTimeout(()=>{ resetArmed=0; b.textContent="전체 초기화"; },3000); return; }
+  resetArmed=0; b.textContent="전체 초기화"; DATA={v:1, words:{}, custom:[], progress:{}}; saveData(); toast("모든 시범과 기록을 지웠어요."); renderAll();
+};
+
+// ── 탭 ──
+let view="learn";
+function showView(v){
+  view=v;
+  document.querySelectorAll("nav.tabs button").forEach(b=>b.setAttribute("aria-selected", b.dataset.view===v?"true":"false"));
+  ["learn","quiz","caption","teach"].forEach(x=>$("view-"+x).hidden=x!==v);
+  if(v!=="caption" && capOn) capStop();
+  refPlayer.stop(); quizPlayer.stop(); teachPlayer.stop();
+  if(v==="learn"){ moveStage("slot-learn"); renderLearn(); }
+  if(v==="quiz"){ newQuiz(); }
+  if(v==="caption"){ moveStage("slot-caption"); }
+  if(v==="teach"){ moveStage("slot-teach"); renderTeach(); }
+}
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>{ if(!busy) showView(b.dataset.view); });
+function refreshPlayers(){ if(view==="learn") renderLearn(); else if(view==="teach") renderTeach(); }
+function renderAll(){ renderStats(); showView(view); }
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change",()=>{ COL=null; });
+
+renderAll();
+initModels();
+window.__sonmal={prepare, compare, feedback, classify, buildFrame};
+})();
+</script>
+</body>
+</html>
